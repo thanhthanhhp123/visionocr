@@ -86,14 +86,15 @@ def main():
         per_device_train_batch_size=1,
         gradient_accumulation_steps=GRAD_ACCUM,
         per_device_eval_batch_size=1,
-        evaluation_strategy="steps",
+        eval_strategy="steps",
         eval_steps=50,
         save_steps=100,
         save_total_limit=3,
         learning_rate=LR,
         lr_scheduler_type="cosine",
         warmup_ratio=0.1,
-        bf16=True,
+        # bf16=True,
+        fp16=True,
         gradient_checkpointing=True,
         logging_steps=10,
         report_to="none",
@@ -105,7 +106,7 @@ def main():
     mlflow.set_experiment("qwen-vl-invoice-lora")
 
     class MLflowTrainer(Trainer):
-        def log(self, logs):
+        def log(self, logs, start_time=None):
             super().log(logs)
             mlflow.log_metrics(
                 {k: v for k, v in logs.items() if isinstance(v, (int, float))},

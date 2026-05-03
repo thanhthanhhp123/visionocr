@@ -1,3 +1,5 @@
+--extra-index-url https://download.pytorch.org/whl/cu121
+
 # Fine-tuning environment (separate venv recommended)
 # pip install -r requirements-train.txt
 

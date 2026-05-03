@@ -69,3 +69,7 @@ htmlcov/
 tmp/
 temp/
 *.tmp
+
+# Claude
+.claude/
+CLAUDE.md

@@ -53,6 +53,6 @@ class InvoiceDataset(Dataset):
             "input_ids":      input_ids,
             "attention_mask": inputs["attention_mask"][0],
             "pixel_values":   inputs["pixel_values"],
-            "image_grid_thw": inputs["image_grid_thw"],
+            "image_grid_thw": inputs["image_grid_thw"].squeeze(0),  # fix: (1,3) → (3,)
             "labels":         labels,
         }
