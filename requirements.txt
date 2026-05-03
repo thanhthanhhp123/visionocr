@@ -1,0 +1,30 @@
+# API & Backend
+fastapi>=0.111.0
+uvicorn[standard]>=0.30.0
+python-multipart>=0.0.9
+celery>=5.4.0
+redis>=5.0.0
+psycopg2-binary>=2.9.9
+sqlalchemy>=2.0.0
+alembic>=1.13.0
+pydantic>=2.7.0
+pydantic-settings>=2.3.0
+python-dotenv>=1.0.0
+
+# OCR
+paddlepaddle>=2.6.0
+paddleocr>=2.7.0
+
+# Inference (vLLM + AWQ)
+vllm>=0.6.0
+autoawq>=0.2.5
+qwen-vl-utils>=0.0.8
+Pillow>=10.0.0
+
+# Frontend
+streamlit>=1.36.0
+
+# Utilities
+rapidfuzz>=3.9.0
+numpy>=1.26.0
+httpx>=0.27.0

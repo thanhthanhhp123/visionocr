@@ -1,0 +1,71 @@
+# Python
+__pycache__/
+*.py[cod]
+*.pyo
+*.pyd
+.Python
+*.egg
+*.egg-info/
+dist/
+build/
+.eggs/
+.env
+.venv
+venv/
+venv_train/
+env/
+ENV/
+
+# Data & Models (too large for git)
+datasets/images/
+datasets/labels/
+datasets/*.jsonl
+models/
+checkpoints/
+*.bin
+*.safetensors
+*.pt
+*.pth
+*.gguf
+
+# MLflow
+mlruns/
+mlartifacts/
+
+# Logs
+*.log
+logs/
+
+# Secrets & config
+.env
+.env.*
+config/local.py
+secrets/
+
+# Docker
+.docker/
+
+# IDE
+.idea/
+.vscode/
+*.swp
+*.swo
+.DS_Store
+
+# Jupyter
+.ipynb_checkpoints/
+*.ipynb
+
+# DB
+*.db
+*.sqlite3
+
+# Coverage
+.coverage
+htmlcov/
+.pytest_cache/
+
+# Temp
+tmp/
+temp/
+*.tmp
