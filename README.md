@@ -99,7 +99,7 @@ Results on 26-invoice held-out test set (Vietnamese retail invoices):
 ### 1. Clone & install
 
 ```bash
-git clone https://github.com/YOUR_USERNAME/visionocr.git
+git clone https://github.com/thanhthanhhp123/visionocr.git
 cd visionocr
 pip install -r requirements.txt
 ```
@@ -166,9 +166,3 @@ visionocr/
   ]
 }
 ```
-
----
-
-## License
-
-MIT
