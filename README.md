@@ -79,18 +79,19 @@ Streamlit Dashboard
 
 ## Evaluation Results
 
-Results on 26-invoice held-out test set (Vietnamese retail invoices):
+Results on 45-sample held-out test set (Vietnamese retail invoices):
 
 | Metric | Score |
 |---|---|
-| Store Name Accuracy | — |
-| Date Accuracy | — |
-| Total Amount Accuracy | — |
-| Item Name F1 | — |
-| JSON Parse Rate | — |
+| Store Name Accuracy | 93.3% |
+| Date Accuracy | 88.9% |
+| Total Amount Accuracy | 95.6% |
+| Item Name F1 | 0.927 |
+| JSON Parse Rate | 100.0% |
+| Avg Latency (HF + LoRA) | 46.60s |
 | Avg Latency (AWQ + vLLM) | — |
 
-*Results will be updated after Phase 2.*
+*AWQ + vLLM latency will be updated after merge and quantization.*
 
 ---
 

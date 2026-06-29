@@ -1,4 +1,6 @@
 import json
+from pathlib import Path
+
 from torch.utils.data import Dataset
 from qwen_vl_utils import process_vision_info
 
@@ -14,6 +16,8 @@ PROMPT_TEMPLATE = (
 
 class InvoiceDataset(Dataset):
     def __init__(self, jsonl_path: str, processor):
+        self.jsonl_path = Path(jsonl_path)
+        self.image_dir  = self.jsonl_path.parent / "images"
         self.data      = [json.loads(l) for l in open(jsonl_path, encoding="utf-8")]
         self.processor = processor
 
@@ -21,7 +25,7 @@ class InvoiceDataset(Dataset):
         return len(self.data)
 
     def __getitem__(self, idx):
-        messages = self.data[idx]["messages"]
+        messages = self._messages_from_sample(self.data[idx])
 
         text = self.processor.apply_chat_template(
             messages, tokenize=False, add_generation_prompt=False
@@ -56,3 +60,42 @@ class InvoiceDataset(Dataset):
             "image_grid_thw": inputs["image_grid_thw"].squeeze(0),  # fix: (1,3) → (3,)
             "labels":         labels,
         }
+
+    def _messages_from_sample(self, sample):
+        if "messages" in sample:
+            return sample["messages"]
+
+        if "image" not in sample or "label" not in sample:
+            raise KeyError("Expected sample to contain either 'messages' or both 'image' and 'label'")
+
+        ocr_hint = ""
+        if sample.get("ocr_text"):
+            ocr_hint = f"OCR text tham khảo:\n{sample['ocr_text']}\n\n"
+
+        prompt = PROMPT_TEMPLATE.format(ocr_hint=ocr_hint)
+        label = json.dumps(sample["label"], ensure_ascii=False)
+
+        return [
+            {
+                "role": "user",
+                "content": [
+                    {"type": "image", "image": self._resolve_image_path(sample["image"])},
+                    {"type": "text", "text": prompt},
+                ],
+            },
+            {
+                "role": "assistant",
+                "content": [{"type": "text", "text": label}],
+            },
+        ]
+
+    def _resolve_image_path(self, image_path):
+        image_path = Path(image_path)
+        if image_path.exists():
+            return str(image_path)
+
+        local_image_path = self.image_dir / image_path.name
+        if local_image_path.exists():
+            return str(local_image_path)
+
+        return str(image_path)
