@@ -29,7 +29,7 @@ BASE_MODEL_ID = os.getenv(
 ADAPTER_PATH = Path(os.getenv("LORA_ADAPTER_PATH", PROJECT_ROOT / "models/qwen-lora-invoice-adapter-v2"))
 MERGED_PATH = Path(os.getenv("MERGED_MODEL_PATH", PROJECT_ROOT / "models/qwen-merged-invoice-v2"))
 AWQ_OUT_PATH = Path(os.getenv("AWQ_MODEL_PATH", PROJECT_ROOT / "models/qwen-awq-invoice-v2"))
-CALIB_IMAGES = PROJECT_ROOT / "datasets/images"
+CALIB_JSONL = PROJECT_ROOT / "datasets/train.jsonl"
 
 
 # ── Step 1: Merge LoRA ───────────────────────────────────────────────────────
@@ -87,20 +87,27 @@ def quantize_awq():
     )
     processor = AutoProcessor.from_pretrained(MERGED_PATH)
 
-    # Build calibration data from invoice images (no labels needed)
-    calib_messages = []
-    image_files = list(CALIB_IMAGES.glob("*.jpg"))[:128]
-    if not image_files:
-        image_files = list(CALIB_IMAGES.glob("*.png"))[:128]
+    # AutoAWQ's calibration path (awq.utils.calib_data.get_calib_dataset) only
+    # accepts plain text — a list of strings, a list of token-id lists, or a
+    # HF dataset name. It cannot consume multimodal chat messages, and only
+    # the language-model layers are quantized anyway (modules_to_not_convert
+    # includes "visual"), so plain text through the language model is the
+    # right calibration signal. Reuse the already-prepared training prompts
+    # (same instruction template + target JSON the model was fine-tuned on)
+    # instead of loading images.
+    import json
 
-    for img in image_files:
-        calib_messages.append([{
-            "role": "user",
-            "content": [
-                {"type": "image", "image": str(img)},
-                {"type": "text",  "text": "Trích xuất thông tin hóa đơn."},
-            ],
-        }])
+    calib_texts = []
+    with open(CALIB_JSONL, encoding="utf-8") as f:
+        for line in f:
+            if len(calib_texts) >= 128:
+                break
+            sample = json.loads(line)
+            user_text = next(
+                c["text"] for c in sample["messages"][0]["content"] if c["type"] == "text"
+            )
+            assistant_text = sample["messages"][1]["content"][0]["text"]
+            calib_texts.append(f"{user_text}\n{assistant_text}")
 
     quant_config = {
         "zero_point": True,
@@ -109,7 +116,7 @@ def quantize_awq():
         "version": "GEMM",
     }
 
-    model.quantize(processor.tokenizer, quant_config=quant_config, calib_data=calib_messages)
+    model.quantize(processor.tokenizer, quant_config=quant_config, calib_data=calib_texts)
     model.save_quantized(AWQ_OUT_PATH)
     processor.save_pretrained(AWQ_OUT_PATH)
     print(f"AWQ model saved to {AWQ_OUT_PATH}")
