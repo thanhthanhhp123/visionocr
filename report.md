@@ -249,7 +249,10 @@ validation dùng để theo dõi loss; 87 mẫu test dùng để đánh giá cu�
 - Item Name F1 không tăng; cần phân tích thêm tính đa dạng của tên hàng, chất
   lượng nhãn và chiến lược matching.
 - LoRA làm inference chậm hơn baseline trong Hugging Face 4-bit path. Model đã
-  được merge; AWQ/vLLM là hướng tối ưu latency tiếp theo.
+  được merge; AWQ/vLLM đã được thử làm hướng tối ưu latency nhưng bị dừng lại
+  do thư viện `autoawq` không tương thích với kiến trúc Qwen2.5-VL trên bản
+  `transformers` hiện tại (xem §7). HF + LoRA 4-bit là backend chính thức
+  hiện tại.
 
 ### 6.3. Phân tích lỗi
 
@@ -303,12 +306,25 @@ buộc hậu xử lý đối chiếu `total` với tổng `items` + `discount`.
 
 ## 7. Hạn chế và hướng phát triển
 
-- Hoàn thiện AWQ quantization và benchmark vLLM. Bốn lần chạy job SLURM đầu
-  tiên thất bại do AutoAWQ (đã deprecated, không còn được bảo trì) giả định
-  cấu trúc `model.model.layers` của một phiên bản `transformers` cũ hơn,
-  trong khi bản `transformers` hiện cài đặt đã chuyển decoder layers sang
-  `model.model.language_model.layers`; đã vá lỗi này trong
-  `vlm/finetune/merge_and_quantize.py` và job đã được submit lại.
+- **AWQ quantization + vLLM: đã thử và dừng lại (không phải "pending").**
+  Tổng cộng 7 lần chạy job SLURM (`quantize_awq.slurm`), phát hiện và vá được
+  3 lớp lỗi tương thích liên tiếp giữa `autoawq` (đã bị chính tác giả đánh
+  dấu deprecated/ngừng bảo trì) và `transformers` hiện tại cho kiến trúc
+  Qwen2.5-VL: (1) decoder layers đã chuyển từ `model.model.layers` sang
+  `model.model.language_model.layers`, (2) `AutoAWQ` chỉ chấp nhận dữ liệu
+  hiệu chuẩn dạng văn bản thuần chứ không phải chat message đa phương thức,
+  (3) hook nội bộ `Catcher` thiếu thuộc tính `attention_type` mà
+  `transformers` mới yêu cầu ở mọi layer. Mỗi lỗi chỉ lộ ra sau khi vá lỗi
+  trước, cho thấy một mô hình rõ ràng: `autoawq` không tương thích sâu với
+  Qwen2.5-VL trên phiên bản `transformers` đang dùng. Lỗi thứ 4 (chưa vá):
+  `AwqQuantizer.init_quant` gọi `model.prepare_inputs_for_generation(...)`
+  trực tiếp ngoài vòng lặp `generate()`, khiến `position_ids` (3D mRoPE) là
+  `None` và crash — sửa đúng đòi hỏi tự dựng `position_ids` mRoPE hợp lệ,
+  không còn là patch một dòng. **Quyết định:** dừng vá `autoawq`, giữ HF +
+  LoRA 4-bit (`vlm/inference.py`, backend `hf_lora`) làm đường suy luận
+  chính thức của hệ thống; chỉ quay lại tối ưu latency qua một công cụ được
+  bảo trì tích cực như `llm-compressor` (do chính vLLM Project khuyến nghị
+  thay thế AutoAWQ) nếu latency trở thành yêu cầu bắt buộc.
 - Kiểm tra end-to-end Docker trên GPU host có NVIDIA Container Runtime.
 - Bổ sung demo GIF/video từ luồng upload thực tế.
 - Rà soát 321/1.757 nhãn còn lỗi (thiếu `store_name`/`date`) và 740/1.757
@@ -341,9 +357,11 @@ soát dữ liệu và ràng buộc hậu xử lý hơn là tăng quy mô augment
 Về mặt hệ thống, dự án triển khai đầy đủ kiến trúc bất đồng bộ thực tế
 (FastAPI + Celery/Redis + PostgreSQL + Alembic + Streamlit, có test tự động
 cho tầng API/persistence) thay vì chỉ dừng ở một script inference đơn lẻ.
-Giới hạn còn lại là latency của đường suy luận HF + LoRA 4-bit (36.6s/ảnh)
-chưa được benchmark với đường AWQ + vLLM do vướng lỗi tương thích thư viện
-(nay đã vá) và việc xác minh runtime Docker/GPU đầy đủ chưa thực hiện được
+Giới hạn còn lại là latency của đường suy luận HF + LoRA 4-bit (36.6s/ảnh):
+hướng tối ưu bằng AWQ + vLLM đã được thử nghiệm kỹ (7 lần chạy, vá 3 lớp lỗi
+tương thích thư viện) nhưng dừng lại do `autoawq` không tương thích sâu với
+Qwen2.5-VL trên `transformers` hiện tại — HF + LoRA 4-bit vẫn là backend
+chính thức. Việc xác minh runtime Docker/GPU đầy đủ cũng chưa thực hiện được
 trên môi trường phát triển hiện tại. Trong phạm vi một dự án portfolio nhắm
 tới vị trí AI/ML Engineer Fresher, hệ thống chứng minh được năng lực triển
 khai một pipeline VLM fine-tuning + MLOps + backend bất đồng bộ hoàn chỉnh,

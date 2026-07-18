@@ -43,7 +43,7 @@ Qwen2.5-VL-3B (LoRA fine-tuned)
 FastAPI + Celery + Redis
   - Async processing queue
   - PostgreSQL storage
-  - vLLM inference engine (3–5x faster)
+  - Hugging Face + LoRA v2 inference (4-bit)
       │
       ▼
 Streamlit Dashboard
@@ -56,7 +56,7 @@ Streamlit Dashboard
 | Category | Technologies |
 |---|---|
 | **ML / AI** | PyTorch, Transformers, LoRA (PEFT), PaddleOCR, Qwen2.5-VL |
-| **Inference** | Hugging Face + LoRA v2 (active); vLLM/AWQ INT4 (pending) |
+| **Inference** | Hugging Face + LoRA v2, 4-bit (official backend); vLLM/AWQ INT4 attempted, abandoned — see below |
 | **MLOps** | MLflow (experiment tracking, model registry) |
 | **Backend** | FastAPI, Celery, Redis, PostgreSQL, SQLAlchemy, Alembic |
 | **Frontend** | Streamlit |
@@ -69,16 +69,31 @@ Streamlit Dashboard
 | Phase | Content | Status |
 |---|---|---|
 | 1 | Data pipeline & labeling | ✅ Done |
-| 2 | Fine-tune Qwen2.5-VL + MLflow | 🟡 LoRA v2 trained, evaluated and merged; AWQ/vLLM pending |
+| 2 | Fine-tune Qwen2.5-VL + MLflow | ✅ LoRA v2 trained, evaluated and merged. AWQ/vLLM attempted, abandoned (see below) — HF+LoRA 4-bit is the official backend |
 | 3 | FastAPI + Celery + PostgreSQL | ✅ Implemented; end-to-end runtime verification pending |
 | 4 | Frontend Streamlit | ✅ Implemented; end-to-end runtime verification pending |
 | 5 | Docker + Docker Compose | 🟡 Configured; runtime verification pending (Docker unavailable locally) |
 | 6 | Polish, README, demo video | 🟡 Docs/tests done; demo recording pending |
 
+### AWQ + vLLM: attempted and abandoned
+
+Across 7 SLURM runs of `quantize_awq.slurm`, three separate incompatibilities
+were found and patched in `vlm/finetune/merge_and_quantize.py` between
+`autoawq` (upstream-deprecated, no longer maintained — the package itself
+recommends migrating to vLLM's `llm-compressor`) and the installed
+`transformers`' Qwen2.5-VL implementation: decoder layers moved to
+`model.model.language_model.layers`, calibration data must be plain text
+(not multimodal chat messages), and an internal `Catcher` proxy didn't
+expose `attention_type`. A fourth, unpatched issue remains — AutoAWQ calls
+`model.prepare_inputs_for_generation(...)` outside of `generate()`, so
+Qwen2.5-VL's 3D mRoPE `position_ids` come back `None` — that would require
+hand-building valid mRoPE position ids to fix, no longer a one-line patch.
+**Decision: stop patching AutoAWQ; HF + LoRA v2 (4-bit) is the official
+inference backend.** Revisit only via a maintained AWQ/quantization tool
+(e.g. `llm-compressor`) if latency becomes a hard requirement.
+
 ### Remaining work
 
-- Produce an AWQ artifact from the merged LoRA v2 model, validate vLLM visual
-  inference, and benchmark accuracy/latency against the HF path.
 - Run the full Docker stack on a Docker-enabled GPU host using the local model
   artifacts or an authenticated model source.
 - Record the actual upload-to-result demo GIF/video after the live stack check.
@@ -101,7 +116,9 @@ same source invoice are kept in a single split to prevent train/test leakage.
 
 LoRA v2 substantially improves structured fields, especially total amount, but
 does not improve item-name F1 and is slower in the current Hugging Face 4-bit
-evaluation path. AWQ + vLLM latency remains pending.
+evaluation path. AWQ + vLLM was evaluated as a latency optimization and
+abandoned due to upstream library incompatibility (see "AWQ + vLLM: attempted
+and abandoned" above); HF + LoRA 4-bit remains the official backend.
 
 ---
 
@@ -142,7 +159,7 @@ visionocr/
 ├── worker/               Celery async tasks
 ├── ocr/                  PaddleOCR engine wrapper
 ├── vlm/
-│   ├── inference.py      vLLM inference engine
+│   ├── inference.py      HF + LoRA v2 inference (official); AWQ/vLLM fallback
 │   └── finetune/         LoRA training scripts
 ├── db/                   SQLAlchemy models, session and persistence helpers
 ├── alembic/              Database migration scripts

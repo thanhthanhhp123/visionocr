@@ -53,6 +53,23 @@ def merge_lora():
 
 
 # ── Step 2: AWQ Quantization ─────────────────────────────────────────────────
+# STATUS (2026-07-18): not working. AutoAWQ is deprecated/unmaintained
+# upstream (see the DeprecationWarning it prints on import) and its
+# Qwen2.5-VL support predates several transformers changes. Three
+# incompatibilities were found and patched below across three SLURM runs
+# (decoder layers moved to model.model.language_model, calib_data must be
+# plain text not chat messages, Catcher didn't expose attention_type), each
+# one surfacing only after fixing the last. A fourth, unpatched issue
+# remains: AwqQuantizer.init_quant calls
+# model.prepare_inputs_for_generation(...) directly outside of generate(),
+# and Qwen2.5-VL's override assumes `position_ids` (3D mRoPE) was already
+# computed by generate()'s own setup, so it receives None and crashes.
+# Fixing that requires hand-building valid mRoPE position_ids, which is
+# nontrivial and specific to this model. Decision: stop patching AutoAWQ and
+# ship HF + LoRA (vlm/inference.py's hf_lora backend) as the official
+# inference path; revisit AWQ only via a maintained alternative such as
+# llm-compressor (vLLM project's recommended AutoAWQ replacement) if
+# latency becomes a hard requirement.
 def quantize_awq():
     print("Step 2: AWQ INT4 quantization (~30 min on RTX 3090)...")
     from transformers import AutoProcessor, activations

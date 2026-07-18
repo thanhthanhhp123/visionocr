@@ -35,7 +35,12 @@ Các khu vực chính:
 ## Trạng thái gần nhất
 
 - Phase 1 được chủ dự án xác nhận hoàn tất.
-- Phase 2: LoRA v2 đã train, evaluate và merge; AWQ/vLLM vẫn chưa tạo artifact.
+- Phase 2: LoRA v2 đã train, evaluate và merge. AWQ/vLLM đã thử (7 lần chạy
+  SLURM, vá 3 lớp lỗi tương thích `autoawq`/`transformers`) và **đã dừng lại**
+  do lỗi thứ 4 (`position_ids` mRoPE) không còn là patch một dòng — xem
+  README.md §"AWQ + vLLM: attempted and abandoned". Không submit lại
+  `quantize_awq.slurm` mà không hỏi trước; đây là quyết định có chủ đích, HF
+  + LoRA 4-bit là backend chính thức.
 - Phase 3–4: API/Celery/database persistence và frontend đã được triển khai, có unit/API tests; chưa xác minh full GPU runtime.
 - Phase 5: Docker Compose và Dockerfiles đã cấu hình; Docker runtime chưa có trên môi trường hiện tại để chạy stack.
 - Kết quả LoRA v2 gần nhất trên 87 mẫu test leakage-safe:
@@ -75,7 +80,9 @@ Các khu vực chính:
 
 ## Các vấn đề kỹ thuật đã biết cần lưu ý
 
-- AWQ/vLLM chưa có artifact cục bộ. Runtime tự fallback sang model merged v2 (hoặc LoRA v2).
+- AWQ/vLLM không có artifact cục bộ (đã dừng nỗ lực, không phải "chưa làm").
+  Runtime tự fallback sang model merged v2 (hoặc LoRA v2) — đây là hành vi
+  dự kiến, không phải lỗi cần sửa.
 - Docker CLI/runtime không có trên môi trường hiện tại; cần chạy Docker Compose trên Docker-enabled GPU host.
 - Chưa có demo GIF/video được ghi lại từ luồng upload thực tế.
 
