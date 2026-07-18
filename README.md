@@ -56,7 +56,7 @@ Streamlit Dashboard
 | Category | Technologies |
 |---|---|
 | **ML / AI** | PyTorch, Transformers, LoRA (PEFT), PaddleOCR, Qwen2.5-VL |
-| **Inference** | vLLM, AWQ INT4 quantization |
+| **Inference** | Hugging Face + LoRA v2 (active); vLLM/AWQ INT4 (pending) |
 | **MLOps** | MLflow (experiment tracking, model registry) |
 | **Backend** | FastAPI, Celery, Redis, PostgreSQL, SQLAlchemy, Alembic |
 | **Frontend** | Streamlit |
@@ -69,29 +69,39 @@ Streamlit Dashboard
 | Phase | Content | Status |
 |---|---|---|
 | 1 | Data pipeline & labeling | ✅ Done |
-| 2 | Fine-tune Qwen2.5-VL + MLflow | 🔄 In progress |
-| 3 | FastAPI + Celery + PostgreSQL | ⬜ Planned |
-| 4 | Frontend Streamlit | ⬜ Planned |
-| 5 | Docker + Docker Compose | ⬜ Planned |
-| 6 | Polish, README, demo video | ⬜ Planned |
+| 2 | Fine-tune Qwen2.5-VL + MLflow | 🟡 LoRA v2 trained, evaluated and merged; AWQ/vLLM pending |
+| 3 | FastAPI + Celery + PostgreSQL | ✅ Implemented; end-to-end runtime verification pending |
+| 4 | Frontend Streamlit | ✅ Implemented; end-to-end runtime verification pending |
+| 5 | Docker + Docker Compose | 🟡 Configured; runtime verification pending (Docker unavailable locally) |
+| 6 | Polish, README, demo video | 🟡 Docs/tests done; demo recording pending |
+
+### Remaining work
+
+- Produce an AWQ artifact from the merged LoRA v2 model, validate vLLM visual
+  inference, and benchmark accuracy/latency against the HF path.
+- Run the full Docker stack on a Docker-enabled GPU host using the local model
+  artifacts or an authenticated model source.
+- Record the actual upload-to-result demo GIF/video after the live stack check.
 
 ---
 
 ## Evaluation Results
 
-Results on 45-sample held-out test set (Vietnamese retail invoices):
+Results on the same 87-sample held-out test set. Augmented variants from the
+same source invoice are kept in a single split to prevent train/test leakage.
 
-| Metric | Score |
-|---|---|
-| Store Name Accuracy | 93.3% |
-| Date Accuracy | 88.9% |
-| Total Amount Accuracy | 95.6% |
-| Item Name F1 | 0.927 |
-| JSON Parse Rate | 100.0% |
-| Avg Latency (HF + LoRA) | 46.60s |
-| Avg Latency (AWQ + vLLM) | — |
+| Metric | Zero-shot | LoRA v2 | LoRA change |
+|---|---:|---:|---:|
+| Store Name Accuracy | 79.3% | 88.5% | +9.2 pp |
+| Date Accuracy | 87.4% | 90.8% | +3.4 pp |
+| Total Amount Accuracy | 23.0% | 90.8% | +67.8 pp |
+| Item Name F1 | 0.931 | 0.923 | -0.008 |
+| JSON Parse Rate | 98.9% | 98.9% | 0.0 pp |
+| Avg Latency (HF, 4-bit) | 16.77s | 36.59s | +19.82s |
 
-*AWQ + vLLM latency will be updated after merge and quantization.*
+LoRA v2 substantially improves structured fields, especially total amount, but
+does not improve item-name F1 and is slower in the current Hugging Face 4-bit
+evaluation path. AWQ + vLLM latency remains pending.
 
 ---
 
@@ -108,8 +118,12 @@ pip install -r requirements.txt
 ### 2. Run with Docker Compose
 
 ```bash
-docker-compose up --build
+cp .env.example .env
+docker compose up --build
 ```
+
+The worker requires an NVIDIA-enabled Docker host. Mount or configure access to
+the Qwen base model and the local `models/` artifacts before running offline.
 
 ### 3. API
 
@@ -130,7 +144,8 @@ visionocr/
 ├── vlm/
 │   ├── inference.py      vLLM inference engine
 │   └── finetune/         LoRA training scripts
-├── db/                   SQLAlchemy models, CRUD, Alembic migrations
+├── db/                   SQLAlchemy models, session and persistence helpers
+├── alembic/              Database migration scripts
 ├── mlops/                MLflow tracking utilities
 ├── frontend/             Streamlit dashboard
 ├── scripts/              Data preparation and evaluation

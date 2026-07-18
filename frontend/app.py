@@ -5,10 +5,9 @@ Run: streamlit run frontend/app.py
 import streamlit as st
 import httpx
 import time
-import json
-from PIL import Image
+import os
 
-API_BASE = "http://localhost:8000/api/v1"
+API_BASE = os.getenv("API_BASE", "http://localhost:8000/api/v1").rstrip("/")
 
 st.set_page_config(
     page_title="VisionOCR — Invoice Intelligence",
@@ -44,9 +43,11 @@ with col2:
                     task_id = data["task_id"]
 
                     # Poll for result
-                    for _ in range(30):
+                    result = {"status": "pending"}
+                    for _ in range(90):
                         time.sleep(2)
                         poll = httpx.get(f"{API_BASE}/tasks/{task_id}", timeout=10)
+                        poll.raise_for_status()
                         result = poll.json()
                         if result["status"] in ("success", "failed"):
                             break
@@ -83,6 +84,8 @@ with col2:
 
                         with st.expander("Raw JSON"):
                             st.json(inv)
+                    elif result["status"] == "pending":
+                        st.warning("Task is still processing. Please try again in a moment.")
                     else:
                         st.error(f"Extraction failed: {result.get('error', 'Unknown error')}")
 
