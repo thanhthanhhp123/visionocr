@@ -28,14 +28,14 @@ PROJECT_ROOT = Path(__file__).resolve().parents[2]
 if str(PROJECT_ROOT) not in sys.path:
     sys.path.insert(0, str(PROJECT_ROOT))
 
-from vlm.finetune.dataset import InvoiceDataset
+from vlm.finetune.dataset import InvoiceDataset  # noqa: E402
 
 # ── Hyperparameters ─────────────────────────────────────────────────────────
 MODEL_ID       = "/home/s3002152/LeeHoang_/vlm_invoice/models/Qwen2.5-VL-3B-Instruct"
 TRAIN_JSONL    = str(PROJECT_ROOT / "datasets/train.jsonl")
 VAL_JSONL      = str(PROJECT_ROOT / "datasets/val.jsonl")
-OUTPUT_DIR     = str(PROJECT_ROOT / "checkpoints/qwen-lora-invoice")
-ADAPTER_OUT    = str(PROJECT_ROOT / "models/qwen-lora-invoice-adapter")
+OUTPUT_DIR     = str(PROJECT_ROOT / "checkpoints/qwen-lora-invoice-v2")
+ADAPTER_OUT    = str(PROJECT_ROOT / "models/qwen-lora-invoice-adapter-v2")
 
 LORA_R         = 16
 LORA_ALPHA     = 32

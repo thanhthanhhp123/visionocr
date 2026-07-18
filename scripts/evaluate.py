@@ -25,13 +25,13 @@ if str(PROJECT_ROOT) not in sys.path:
     sys.path.insert(0, str(PROJECT_ROOT))
 
 TEST_JSONL = PROJECT_ROOT / "datasets/test.jsonl"
-ADAPTER_PATH = PROJECT_ROOT / "models/qwen-lora-invoice-adapter"
+ADAPTER_PATH = PROJECT_ROOT / "models/qwen-lora-invoice-adapter-v2"
 LOCAL_BASE_MODEL = PROJECT_ROOT.parent / "models/Qwen2.5-VL-3B-Instruct"
 BASE_MODEL = os.getenv(
     "BASE_MODEL_ID",
     str(LOCAL_BASE_MODEL if LOCAL_BASE_MODEL.exists() else "Qwen/Qwen2.5-VL-3B-Instruct"),
 )
-RESULTS_PATH = PROJECT_ROOT / "results_finetuned.json"
+RESULTS_PATH = PROJECT_ROOT / "results_finetuned_v2.json"
 README_PATH = PROJECT_ROOT / "README.md"
 
 PROMPT_TEMPLATE = (
@@ -187,7 +187,7 @@ def item_f1(pred_items: list, gold_items: list) -> float:
     return 2 * precision * recall / (precision + recall + 1e-9)
 
 
-def run_eval(model, processor, label: str = "fine_tuned") -> dict:
+def run_eval(model, processor, label: str = "fine_tuned_v2") -> dict:
     samples = [json.loads(line) for line in open(TEST_JSONL, encoding="utf-8")]
     results = {"store": [], "date": [], "total": [], "item_f1": [], "parse_ok": [], "latency": []}
     predictions = []

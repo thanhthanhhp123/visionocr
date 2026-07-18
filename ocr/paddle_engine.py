@@ -3,7 +3,6 @@ PaddleOCR wrapper — extracts raw text from invoice images.
 Text is used as a hint/fallback for the VLM model.
 """
 from __future__ import annotations
-import re
 
 _ocr = None
 

@@ -18,7 +18,8 @@ class InvoiceDataset(Dataset):
     def __init__(self, jsonl_path: str, processor):
         self.jsonl_path = Path(jsonl_path)
         self.image_dir  = self.jsonl_path.parent / "images"
-        self.data      = [json.loads(l) for l in open(jsonl_path, encoding="utf-8")]
+        with open(jsonl_path, encoding="utf-8") as data_file:
+            self.data = [json.loads(line) for line in data_file]
         self.processor = processor
 
     def __len__(self):

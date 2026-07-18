@@ -2,7 +2,6 @@
 import json
 from pathlib import Path
 from datetime import datetime
-import re
 
 LABELS_DIR = Path("datasets/labels")
 
@@ -44,7 +43,7 @@ def try_fix_date(v: str) -> str | None:
     for fmt in formats:
         try:
             return datetime.strptime(v, fmt).strftime("%Y-%m-%d")
-        except:
+        except ValueError:
             continue
     return None
 
@@ -92,7 +91,7 @@ for fname in ERROR_FILES:
     if date_val:
         try:
             datetime.strptime(date_val, "%Y-%m-%d")  # đã đúng
-        except:
+        except ValueError:
             fixed_date = try_fix_date(date_val)
             if fixed_date:
                 data["date"] = fixed_date

@@ -14,7 +14,7 @@ import torch
 
 from evaluate import BASE_MODEL, PROJECT_ROOT, print_scores, run_eval
 
-RESULTS_PATH = PROJECT_ROOT / "results_zeroshot.json"
+RESULTS_PATH = PROJECT_ROOT / "results_zeroshot_v2.json"
 
 
 def load_base_model():
@@ -51,7 +51,7 @@ def main():
     parser.parse_args()
 
     model, processor = load_base_model()
-    output = run_eval(model, processor, label="zero_shot")
+    output = run_eval(model, processor, label="zero_shot_v2")
     RESULTS_PATH.write_text(json.dumps(output, ensure_ascii=False, indent=2), encoding="utf-8")
     print_scores(output["scores"])
     print(f"\nSaved to {RESULTS_PATH}")

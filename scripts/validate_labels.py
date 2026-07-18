@@ -3,7 +3,6 @@
 import json
 from pathlib import Path
 from datetime import datetime
-from typing import List
 
 LABELS_DIR = Path("datasets/labels")
 
@@ -11,7 +10,7 @@ def try_fix_date(v: str) -> str | None:
     for fmt in ["%d/%m/%Y", "%d-%m-%Y", "%Y/%m/%d", "%d/%m/%y"]:
         try:
             return datetime.strptime(v.strip(), fmt).strftime("%Y-%m-%d")
-        except:
+        except ValueError:
             continue
     return None
 
@@ -20,7 +19,7 @@ def clean_number(v) -> float:
         return 0.0
     try:
         return round(float(str(v).replace(",", ".")), 2)
-    except:
+    except (TypeError, ValueError):
         return 0.0
 
 def clean_invoice(raw: dict) -> dict | None:
@@ -37,7 +36,7 @@ def clean_invoice(raw: dict) -> dict | None:
     if date:
         try:
             datetime.strptime(date, "%Y-%m-%d")  # đã đúng
-        except:
+        except ValueError:
             fixed = try_fix_date(str(date))
             if fixed:
                 raw["date"] = fixed

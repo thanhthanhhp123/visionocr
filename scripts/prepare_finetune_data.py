@@ -10,7 +10,18 @@ Output:
 """
 import json
 import random
+import re
+import sys
+from collections import defaultdict
 from pathlib import Path
+
+from pydantic import ValidationError
+
+PROJECT_ROOT = Path(__file__).resolve().parents[1]
+if str(PROJECT_ROOT) not in sys.path:
+    sys.path.insert(0, str(PROJECT_ROOT))
+
+from api.schemas.invoice import InvoiceSchema  # noqa: E402
 
 LABELS_DIR  = Path("datasets/labels")
 IMAGES_DIR  = Path("datasets/images")
@@ -60,30 +71,57 @@ def build_sample(image_path: Path, label: dict) -> dict:
 # Load samples
 samples = []
 skipped = []
+invalid = []
 
 for f in sorted(LABELS_DIR.glob("*.json")):
     label = json.loads(f.read_text(encoding="utf-8"))
     img   = find_image(f.stem)
-    if img:
-        samples.append(build_sample(img, label))
-    else:
+    if not img:
         skipped.append(f.stem)
+        continue
 
-print(f"Loaded: {len(samples)} | Skipped (no image): {len(skipped)}")
+    try:
+        validated = InvoiceSchema.model_validate(label)
+    except ValidationError:
+        invalid.append(f.stem)
+        continue
 
-# Shuffle & split
+    # Giữ các biến thể augmentation của cùng một hóa đơn trong cùng
+    # split để tránh leakage giữa train, validation và test.
+    group_id = re.sub(r"_(?:aug\d+|orig)$", "", f.stem)
+    samples.append((group_id, build_sample(img, validated.model_dump())))
+
+print(
+    f"Loaded valid: {len(samples)} | Invalid schema: {len(invalid)} | "
+    f"Skipped (no image): {len(skipped)}"
+)
+
+# Shuffle & split by source invoice group
+groups = defaultdict(list)
+for group_id, sample in samples:
+    groups[group_id].append(sample)
+
 random.seed(RANDOM_SEED)
-random.shuffle(samples)
+group_ids = list(groups)
+random.shuffle(group_ids)
 
-n     = len(samples)
-n_val = max(1, int(n * 0.10))
-n_tst = max(1, int(n * 0.10))
+n_groups = len(group_ids)
+n_val_groups = max(1, int(n_groups * 0.10))
+n_test_groups = max(1, int(n_groups * 0.10))
 
-train = samples[:n - n_val - n_tst]
-val   = samples[n - n_val - n_tst : n - n_tst]
-test  = samples[n - n_tst:]
+train_group_ids = group_ids[: n_groups - n_val_groups - n_test_groups]
+val_group_ids = group_ids[n_groups - n_val_groups - n_test_groups : n_groups - n_test_groups]
+test_group_ids = group_ids[n_groups - n_test_groups :]
 
-print(f"Split  — Train: {len(train)} | Val: {len(val)} | Test: {len(test)}")
+train = [sample for group_id in train_group_ids for sample in groups[group_id]]
+val = [sample for group_id in val_group_ids for sample in groups[group_id]]
+test = [sample for group_id in test_group_ids for sample in groups[group_id]]
+
+print(
+    f"Groups — Train: {len(train_group_ids)} | Val: {len(val_group_ids)} | "
+    f"Test: {len(test_group_ids)}"
+)
+print(f"Samples — Train: {len(train)} | Val: {len(val)} | Test: {len(test)}")
 
 # Write JSONL
 OUTPUT_DIR.mkdir(exist_ok=True)
