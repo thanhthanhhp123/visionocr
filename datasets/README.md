@@ -52,5 +52,9 @@ make prepare   # build JSONL splits
 - Nguồn thư mục Google Drive `tung-2 (1)`: 706 cặp ảnh–nhãn bổ sung.
 - Hai nhóm tên file không trùng nhau; sau khi gộp có 1.757 ảnh và
   1.757 labels khớp basename.
-- Các file `train.jsonl`, `val.jsonl`, `test.jsonl` chưa được tạo lại từ
-  dataset 1.757 cặp này.
+- `make check` trên 1.757 cặp: 1.436 nhãn hợp lệ theo kiểm tra cơ bản
+  (còn 321 lỗi thiếu `store_name` hoặc `date` rỗng).
+- `make prepare` lọc theo `InvoiceSchema` (Pydantic, chặt hơn `make check`)
+  và giữ nguyên augmentation của cùng hóa đơn trong một split: 1.017/1.757
+  mẫu đạt schema → Train 820 / Val 110 / Test 87 (`random.seed(42)`, xác
+  minh lại 2026-07-18, khớp với kết quả trong `report.md`).
