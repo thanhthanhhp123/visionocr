@@ -34,10 +34,14 @@ services:
       dockerfile: docker/Dockerfile.api
     ports:
       - "8000:8000"
-    env_file: .env
+    env_file:
+      - path: .env
+        required: false
     environment:
       DATABASE_URL: postgresql://visionocr:password@postgres:5432/visionocr_db
       REDIS_URL: redis://redis:6379/0
+      CELERY_BROKER_URL: redis://redis:6379/0
+      CELERY_RESULT_BACKEND: redis://redis:6379/1
     depends_on:
       postgres:
         condition: service_healthy
@@ -52,11 +56,19 @@ services:
     build:
       context: .
       dockerfile: docker/Dockerfile.worker
-    env_file: .env
+    env_file:
+      - path: .env
+        required: false
     environment:
       DATABASE_URL: postgresql://visionocr:password@postgres:5432/visionocr_db
       CELERY_BROKER_URL: redis://redis:6379/0
       CELERY_RESULT_BACKEND: redis://redis:6379/1
+      REDIS_URL: redis://redis:6379/0
+      INFERENCE_BACKEND: ${INFERENCE_BACKEND:-auto}
+      BASE_MODEL_ID: ${BASE_MODEL_ID:-Qwen/Qwen2.5-VL-3B-Instruct}
+      LORA_ADAPTER_PATH: /app/models/qwen-lora-invoice-adapter-v2
+      MERGED_MODEL_PATH: /app/models/qwen-merged-invoice-v2
+      AWQ_MODEL_PATH: /app/models/qwen-awq-invoice-v2
     depends_on:
       redis:
         condition: service_healthy

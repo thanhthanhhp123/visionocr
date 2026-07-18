@@ -1,0 +1,19 @@
+-r requirements-api.txt
+
+# OCR
+paddlepaddle>=2.6.0
+paddleocr>=2.7.0
+
+# HF + LoRA fallback inference
+torch>=2.3.0
+transformers>=4.45.0,<5
+peft>=0.12.0
+bitsandbytes>=0.43.0
+accelerate>=0.31.0
+qwen-vl-utils>=0.0.8
+
+# Optional fast path when an AWQ model artifact is present.
+vllm>=0.6.0
+autoawq>=0.2.5
+datasets>=2.20.0
+zstandard>=0.23.0

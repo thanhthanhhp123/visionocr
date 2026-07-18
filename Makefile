@@ -1,4 +1,4 @@
-.PHONY: help install install-train check validate prepare train evaluate api worker frontend docker-up docker-down mlflow lint
+.PHONY: help install install-train install-dev check validate prepare train evaluate api worker frontend docker-up docker-down mlflow lint lint-fix test migrate
 
 help:
 	@echo "VisionOCR — Available commands:"
@@ -6,6 +6,7 @@ help:
 	@echo "  Setup"
 	@echo "    make install          Install inference/API dependencies"
 	@echo "    make install-train    Install fine-tuning dependencies"
+	@echo "    make install-dev      Install test and lint dependencies"
 	@echo ""
 	@echo "  Data (Phase 1)"
 	@echo "    make check            Check dataset integrity"
@@ -25,13 +26,19 @@ help:
 	@echo "    make docker-down      Stop all services"
 	@echo ""
 	@echo "  Dev"
-	@echo "    make lint             Run ruff linter"
+	@echo "    make lint             Check code with ruff"
+	@echo "    make lint-fix         Apply safe ruff fixes"
+	@echo "    make test             Run unit/API tests"
+	@echo "    make migrate          Apply Alembic migrations"
 
 install:
 	pip install -r requirements.txt
 
 install-train:
 	pip install -r requirements-train.txt
+
+install-dev:
+	pip install -r requirements-dev.txt
 
 # ── Data pipeline ──────────────────────────────────────────
 check:
@@ -53,6 +60,9 @@ evaluate:
 mlflow:
 	mlflow ui --port 5000
 
+migrate:
+	alembic upgrade head
+
 # ── Services ───────────────────────────────────────────────
 api:
 	uvicorn api.main:app --reload --host 0.0.0.0 --port 8000
@@ -71,4 +81,10 @@ docker-down:
 
 # ── Dev ────────────────────────────────────────────────────
 lint:
+	ruff check .
+
+lint-fix:
 	ruff check . --fix
+
+test:
+	pytest -q

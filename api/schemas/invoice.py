@@ -1,5 +1,6 @@
 from pydantic import BaseModel, field_validator
 from typing import List, Optional
+from uuid import UUID
 from datetime import datetime
 
 
@@ -36,3 +37,12 @@ class ExtractResponse(BaseModel):
     result: Optional[InvoiceSchema] = None
     error: Optional[str] = None
     latency_ms: Optional[float] = None
+    invoice_id: Optional[UUID] = None
+
+
+class InvoiceRecordResponse(BaseModel):
+    id: UUID
+    filename: Optional[str] = None
+    invoice: InvoiceSchema
+    latency_ms: Optional[float] = None
+    created_at: datetime

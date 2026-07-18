@@ -1,7 +1,6 @@
 import uuid
 from datetime import datetime
-from sqlalchemy import Column, String, Float, Integer, DateTime, ForeignKey, JSON
-from sqlalchemy.dialects.postgresql import UUID
+from sqlalchemy import Column, String, Float, DateTime, ForeignKey, JSON, Uuid
 from sqlalchemy.orm import DeclarativeBase, relationship
 
 
@@ -12,7 +11,7 @@ class Base(DeclarativeBase):
 class InvoiceRecord(Base):
     __tablename__ = "invoices"
 
-    id         = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    id         = Column(Uuid(as_uuid=True), primary_key=True, default=uuid.uuid4)
     filename   = Column(String, nullable=True)
     store_name = Column(String, nullable=True)
     date       = Column(String, nullable=True)
@@ -28,8 +27,8 @@ class InvoiceRecord(Base):
 class InvoiceItem(Base):
     __tablename__ = "invoice_items"
 
-    id          = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
-    invoice_id  = Column(UUID(as_uuid=True), ForeignKey("invoices.id"), nullable=False)
+    id          = Column(Uuid(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    invoice_id  = Column(Uuid(as_uuid=True), ForeignKey("invoices.id"), nullable=False)
     name        = Column(String, nullable=False)
     unit_price  = Column(Float, nullable=True)
     quantity    = Column(Float, nullable=True)
