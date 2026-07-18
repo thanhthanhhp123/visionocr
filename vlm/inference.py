@@ -1,4 +1,5 @@
 """Invoice inference with an AWQ/vLLM fast path and a LoRA v2 fallback."""
+
 from __future__ import annotations
 
 import json
@@ -7,9 +8,15 @@ import re
 from pathlib import Path
 
 PROJECT_ROOT = Path(__file__).resolve().parents[1]
-AWQ_MODEL_PATH = Path(os.getenv("AWQ_MODEL_PATH", PROJECT_ROOT / "models/qwen-awq-invoice-v2"))
-ADAPTER_PATH = Path(os.getenv("LORA_ADAPTER_PATH", PROJECT_ROOT / "models/qwen-lora-invoice-adapter-v2"))
-MERGED_MODEL_PATH = Path(os.getenv("MERGED_MODEL_PATH", PROJECT_ROOT / "models/qwen-merged-invoice-v2"))
+AWQ_MODEL_PATH = Path(
+    os.getenv("AWQ_MODEL_PATH", PROJECT_ROOT / "models/qwen-awq-invoice-v2")
+)
+ADAPTER_PATH = Path(
+    os.getenv("LORA_ADAPTER_PATH", PROJECT_ROOT / "models/qwen-lora-invoice-adapter-v2")
+)
+MERGED_MODEL_PATH = Path(
+    os.getenv("MERGED_MODEL_PATH", PROJECT_ROOT / "models/qwen-merged-invoice-v2")
+)
 
 _base_candidates = [
     PROJECT_ROOT.parent / "models/Qwen2.5-VL-3B-Instruct",
@@ -51,7 +58,9 @@ def _get_vllm_engine():
         _engine = LLM(
             model=str(AWQ_MODEL_PATH),
             quantization="awq",
-            gpu_memory_utilization=float(os.getenv("VLLM_GPU_MEMORY_UTILIZATION", "0.85")),
+            gpu_memory_utilization=float(
+                os.getenv("VLLM_GPU_MEMORY_UTILIZATION", "0.85")
+            ),
             max_model_len=int(os.getenv("VLLM_MAX_MODEL_LEN", "2048")),
             limit_mm_per_prompt={"image": 1},
         )
@@ -64,11 +73,17 @@ def _get_hf_model():
     if _hf_model is None:
         import torch
         from peft import PeftModel
-        from transformers import AutoProcessor, BitsAndBytesConfig, Qwen2_5_VLForConditionalGeneration
+        from transformers import (
+            AutoProcessor,
+            BitsAndBytesConfig,
+            Qwen2_5_VLForConditionalGeneration,
+        )
 
         use_cuda = torch.cuda.is_available()
         use_bf16 = use_cuda and torch.cuda.is_bf16_supported()
-        dtype = torch.bfloat16 if use_bf16 else torch.float16 if use_cuda else torch.float32
+        dtype = (
+            torch.bfloat16 if use_bf16 else torch.float16 if use_cuda else torch.float32
+        )
         quantization = None
         if use_cuda and os.getenv("HF_4BIT", "1") != "0":
             quantization = BitsAndBytesConfig(
@@ -77,7 +92,9 @@ def _get_hf_model():
                 bnb_4bit_compute_dtype=dtype,
                 bnb_4bit_use_double_quant=True,
             )
-        model_source = str(MERGED_MODEL_PATH) if MERGED_MODEL_PATH.exists() else BASE_MODEL
+        model_source = (
+            str(MERGED_MODEL_PATH) if MERGED_MODEL_PATH.exists() else BASE_MODEL
+        )
         base = Qwen2_5_VLForConditionalGeneration.from_pretrained(
             model_source,
             torch_dtype=dtype,
@@ -101,14 +118,24 @@ def _messages(image_path: str, ocr_text: str) -> list[dict]:
     if ocr_text:
         prompt += f"OCR text tham khảo:\n{ocr_text}\n\n"
     prompt += f"Chỉ trả về JSON theo format:\n{OUTPUT_FORMAT}"
-    return [{"role": "user", "content": [{"type": "image", "image": image_path}, {"type": "text", "text": prompt}]}]
+    return [
+        {
+            "role": "user",
+            "content": [
+                {"type": "image", "image": image_path},
+                {"type": "text", "text": prompt},
+            ],
+        }
+    ]
 
 
 def _extract_vllm(messages: list[dict]) -> str:
     from vllm import SamplingParams
 
     engine, processor = _get_vllm_engine()
-    prompt = processor.apply_chat_template(messages, tokenize=False, add_generation_prompt=True)
+    prompt = processor.apply_chat_template(
+        messages, tokenize=False, add_generation_prompt=True
+    )
     image_path = messages[0]["content"][0]["image"]
     outputs = engine.generate(
         [{"prompt": prompt, "multi_modal_data": {"image": image_path}}],
@@ -122,12 +149,16 @@ def _extract_hf(messages: list[dict]) -> str:
     from qwen_vl_utils import process_vision_info
 
     model, processor = _get_hf_model()
-    text = processor.apply_chat_template(messages, tokenize=False, add_generation_prompt=True)
+    text = processor.apply_chat_template(
+        messages, tokenize=False, add_generation_prompt=True
+    )
     images, _ = process_vision_info(messages)
     inputs = processor(text=[text], images=images, return_tensors="pt").to(model.device)
     with torch.no_grad():
         output = model.generate(**inputs, max_new_tokens=512, do_sample=False)
-    return processor.decode(output[0][inputs["input_ids"].shape[1] :], skip_special_tokens=True).strip()
+    return processor.decode(
+        output[0][inputs["input_ids"].shape[1] :], skip_special_tokens=True
+    ).strip()
 
 
 def extract_invoice(image_path: str, ocr_text: str = "") -> dict:
@@ -135,7 +166,9 @@ def extract_invoice(image_path: str, ocr_text: str = "") -> dict:
     messages = _messages(image_path, ocr_text)
     backend = backend_name()
     try:
-        response = _extract_vllm(messages) if backend == "vllm_awq" else _extract_hf(messages)
+        response = (
+            _extract_vllm(messages) if backend == "vllm_awq" else _extract_hf(messages)
+        )
     except Exception:
         if BACKEND != "auto" or backend != "vllm_awq":
             raise

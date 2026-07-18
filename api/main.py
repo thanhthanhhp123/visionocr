@@ -12,6 +12,7 @@ async def lifespan(_: FastAPI):
     init_db()
     yield
 
+
 app = FastAPI(
     title="VisionOCR — Invoice Intelligence Platform",
     description="Extract structured information from Vietnamese invoices using Qwen2.5-VL + LoRA",
@@ -19,7 +20,11 @@ app = FastAPI(
     lifespan=lifespan,
 )
 
-cors_origins = [origin.strip() for origin in os.getenv("CORS_ORIGINS", "*").split(",") if origin.strip()]
+cors_origins = [
+    origin.strip()
+    for origin in os.getenv("CORS_ORIGINS", "*").split(",")
+    if origin.strip()
+]
 
 app.add_middleware(
     CORSMiddleware,

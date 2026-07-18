@@ -1,4 +1,5 @@
 """Persistence helpers for extracted invoices."""
+
 from __future__ import annotations
 
 from uuid import UUID

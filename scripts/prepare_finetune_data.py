@@ -8,6 +8,7 @@ Output:
     datasets/val.jsonl     (~10%)
     datasets/test.jsonl    (~10%)
 """
+
 import json
 import random
 import re
@@ -23,9 +24,9 @@ if str(PROJECT_ROOT) not in sys.path:
 
 from api.schemas.invoice import InvoiceSchema  # noqa: E402
 
-LABELS_DIR  = Path("datasets/labels")
-IMAGES_DIR  = Path("datasets/images")
-OUTPUT_DIR  = Path("datasets")
+LABELS_DIR = Path("datasets/labels")
+IMAGES_DIR = Path("datasets/images")
+OUTPUT_DIR = Path("datasets")
 RANDOM_SEED = 42
 
 PROMPT_TEMPLATE = (
@@ -55,7 +56,7 @@ def build_sample(image_path: Path, label: dict) -> dict:
                 "role": "user",
                 "content": [
                     {"type": "image", "image": str(image_path.resolve())},
-                    {"type": "text",  "text": PROMPT_TEMPLATE.format(ocr_hint=ocr_hint)},
+                    {"type": "text", "text": PROMPT_TEMPLATE.format(ocr_hint=ocr_hint)},
                 ],
             },
             {
@@ -75,7 +76,7 @@ invalid = []
 
 for f in sorted(LABELS_DIR.glob("*.json")):
     label = json.loads(f.read_text(encoding="utf-8"))
-    img   = find_image(f.stem)
+    img = find_image(f.stem)
     if not img:
         skipped.append(f.stem)
         continue
@@ -110,7 +111,9 @@ n_val_groups = max(1, int(n_groups * 0.10))
 n_test_groups = max(1, int(n_groups * 0.10))
 
 train_group_ids = group_ids[: n_groups - n_val_groups - n_test_groups]
-val_group_ids = group_ids[n_groups - n_val_groups - n_test_groups : n_groups - n_test_groups]
+val_group_ids = group_ids[
+    n_groups - n_val_groups - n_test_groups : n_groups - n_test_groups
+]
 test_group_ids = group_ids[n_groups - n_test_groups :]
 
 train = [sample for group_id in train_group_ids for sample in groups[group_id]]

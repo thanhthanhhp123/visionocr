@@ -10,11 +10,17 @@
 > End-to-end AI system for extracting structured information from Vietnamese retail invoices.
 > Built as a portfolio project targeting **AI/ML Engineer Fresher** positions.
 
+**Contents:** [Demo](#demo) · [Architecture](#architecture) · [Tech Stack](#tech-stack) ·
+[Roadmap](#project-roadmap) · [Evaluation Results](#evaluation-results) ·
+[Quickstart](#quickstart) · [Project Structure](#project-structure) ·
+[Invoice Schema](#invoice-schema)
+
 ---
 
 ## Demo
 
-<!-- TODO: Add demo GIF after Phase 6 -->
+> Demo GIF/video pending — see [Remaining work](#remaining-work).
+> Runbook: [`docs/DEMO.md`](docs/DEMO.md).
 
 ```
 Input:  Image of Vietnamese supermarket invoice (VinMart, Co.opmart, etc.)
@@ -69,7 +75,7 @@ Streamlit Dashboard
 | Phase | Content | Status |
 |---|---|---|
 | 1 | Data pipeline & labeling | ✅ Done |
-| 2 | Fine-tune Qwen2.5-VL + MLflow | ✅ LoRA v2 trained, evaluated and merged. AWQ/vLLM attempted, abandoned (see below) — HF+LoRA 4-bit is the official backend |
+| 2 | Fine-tune Qwen2.5-VL + MLflow | ✅ LoRA v2 trained, evaluated, merged — see note below |
 | 3 | FastAPI + Celery + PostgreSQL | ✅ Implemented; end-to-end runtime verification pending |
 | 4 | Frontend Streamlit | ✅ Implemented; end-to-end runtime verification pending |
 | 5 | Docker + Docker Compose | 🟡 Configured; runtime verification pending (Docker unavailable locally) |
@@ -160,12 +166,12 @@ visionocr/
 ├── ocr/                  PaddleOCR engine wrapper
 ├── vlm/
 │   ├── inference.py      HF + LoRA v2 inference (official); AWQ/vLLM fallback
-│   └── finetune/         LoRA training scripts
+│   └── finetune/         LoRA training, merge/quantize scripts
 ├── db/                   SQLAlchemy models, session and persistence helpers
 ├── alembic/              Database migration scripts
-├── mlops/                MLflow tracking utilities
 ├── frontend/             Streamlit dashboard
 ├── scripts/              Data preparation and evaluation
+├── tests/                API + persistence test suite (pytest)
 ├── datasets/
 │   ├── images/           Invoice images (not committed)
 │   ├── labels/           JSON labels (not committed)
@@ -175,8 +181,11 @@ visionocr/
 ├── models/               Local model weights (not committed)
 ├── docker/               Dockerfiles per service
 ├── docker-compose.yml
+├── *.slurm               SLURM batch jobs for the GPU cluster (train/merge/evaluate)
+├── docs/                 Demo runbook and other operational docs
+├── report.md             Project report (data, method, results, error analysis)
 ├── Makefile
-└── requirements.txt
+└── requirements*.txt     Split by service: api / worker / train / dev
 ```
 
 ---

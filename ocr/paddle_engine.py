@@ -2,6 +2,7 @@
 PaddleOCR wrapper — extracts raw text from invoice images.
 Text is used as a hint/fallback for the VLM model.
 """
+
 from __future__ import annotations
 
 _ocr = None
@@ -11,6 +12,7 @@ def _get_ocr():
     global _ocr
     if _ocr is None:
         from paddleocr import PaddleOCR
+
         _ocr = PaddleOCR(use_angle_cls=True, lang="vi", show_log=False)
     return _ocr
 

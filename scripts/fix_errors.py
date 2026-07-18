@@ -31,11 +31,15 @@ ERROR_FILES = [
     "mcocr_public_145014yxijr.json",
 ]
 
+
 def try_fix_date(v: str) -> str | None:
     """Thử parse nhiều format date, trả về YYYY-MM-DD hoặc None."""
     formats = [
-        "%d/%m/%Y", "%d-%m-%Y", "%Y/%m/%d",
-        "%d/%m/%y", "%Y%m%d",
+        "%d/%m/%Y",
+        "%d-%m-%Y",
+        "%Y/%m/%d",
+        "%d/%m/%y",
+        "%Y%m%d",
     ]
     # Bỏ ký tự thừa
     v = v.strip().replace(".", "/")
@@ -46,6 +50,7 @@ def try_fix_date(v: str) -> str | None:
         except ValueError:
             continue
     return None
+
 
 auto_fixed = []
 need_manual = []
@@ -58,7 +63,7 @@ for fname in ERROR_FILES:
 
     data = json.loads(fpath.read_text(encoding="utf-8"))
     issues = []
-    fixed  = []
+    fixed = []
 
     # ── Fix 1: items là None → đổi thành [] ──────────────────────────
     if data.get("items") is None:
@@ -68,10 +73,7 @@ for fname in ERROR_FILES:
     # ── Fix 2: total là None → thử tính từ items ─────────────────────
     if data.get("total") is None or data.get("total") == 0:
         if data["items"]:
-            calc = sum(
-                float(i.get("total_price", 0) or 0)
-                for i in data["items"]
-            )
+            calc = sum(float(i.get("total_price", 0) or 0) for i in data["items"])
             if calc > 0:
                 data["total"] = calc
                 fixed.append(f"total: null → {calc} (sum of items)")
@@ -101,7 +103,9 @@ for fname in ERROR_FILES:
 
     # ── Ghi lại nếu có fix ───────────────────────────────────────────
     if fixed:
-        fpath.write_text(json.dumps(data, ensure_ascii=False, indent=2), encoding="utf-8")
+        fpath.write_text(
+            json.dumps(data, ensure_ascii=False, indent=2), encoding="utf-8"
+        )
 
     if issues:
         need_manual.append((fname, "; ".join(issues), fixed))
@@ -109,10 +113,10 @@ for fname in ERROR_FILES:
         auto_fixed.append((fname, fixed))
 
 # ── Report ────────────────────────────────────────────────────────────
-print(f"\n{'='*55}")
+print(f"\n{'=' * 55}")
 print(f"  Auto-fixed: {len(auto_fixed)}")
 print(f"  Need manual: {len(need_manual)}")
-print(f"{'='*55}")
+print(f"{'=' * 55}")
 
 if auto_fixed:
     print("\n✅ Auto-fixed:")

@@ -27,6 +27,7 @@ class InvoiceSchema(BaseModel):
 
 class ExtractRequest(BaseModel):
     """For JSON body requests (base64 image)"""
+
     image_base64: str
     filename: Optional[str] = None
 

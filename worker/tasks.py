@@ -4,7 +4,9 @@ import tempfile
 import base64
 from celery import Celery
 
-BROKER_URL = os.getenv("CELERY_BROKER_URL", os.getenv("REDIS_URL", "redis://localhost:6379/0"))
+BROKER_URL = os.getenv(
+    "CELERY_BROKER_URL", os.getenv("REDIS_URL", "redis://localhost:6379/0")
+)
 RESULT_BACKEND = os.getenv("CELERY_RESULT_BACKEND", BROKER_URL.rsplit("/", 1)[0] + "/1")
 
 celery_app = Celery(
@@ -45,13 +47,16 @@ def extract_invoice_task(self, image_base64: str, filename: str = "invoice.jpg")
 
         # OCR
         from ocr.paddle_engine import extract_text
+
         ocr_text = extract_text(tmp_path)
 
         # VLM inference
         from vlm.inference import extract_invoice
+
         result = extract_invoice(tmp_path, ocr_text)
 
         from api.schemas.invoice import InvoiceSchema
+
         invoice = InvoiceSchema.model_validate(result)
 
         latency = round((time.time() - start) * 1000, 1)
@@ -73,6 +78,7 @@ def extract_invoice_task(self, image_base64: str, filename: str = "invoice.jpg")
 
     finally:
         import os as _os
+
         tmp_path = locals().get("tmp_path")
         if tmp_path:
             try:

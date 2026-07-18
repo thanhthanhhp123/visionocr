@@ -2,6 +2,7 @@
 frontend/app.py — Streamlit dashboard for VisionOCR
 Run: streamlit run frontend/app.py
 """
+
 import streamlit as st
 import httpx
 import time
@@ -35,7 +36,9 @@ with col2:
                 try:
                     resp = httpx.post(
                         f"{API_BASE}/extract",
-                        files={"file": (uploaded.name, uploaded.getvalue(), uploaded.type)},
+                        files={
+                            "file": (uploaded.name, uploaded.getvalue(), uploaded.type)
+                        },
                         timeout=60,
                     )
                     resp.raise_for_status()
@@ -85,9 +88,13 @@ with col2:
                         with st.expander("Raw JSON"):
                             st.json(inv)
                     elif result["status"] == "pending":
-                        st.warning("Task is still processing. Please try again in a moment.")
+                        st.warning(
+                            "Task is still processing. Please try again in a moment."
+                        )
                     else:
-                        st.error(f"Extraction failed: {result.get('error', 'Unknown error')}")
+                        st.error(
+                            f"Extraction failed: {result.get('error', 'Unknown error')}"
+                        )
 
                 except Exception as e:
                     st.error(f"API error: {e}")
@@ -96,4 +103,6 @@ with col2:
 
 # ── Footer ────────────────────────────────────────────────────────────────────
 st.divider()
-st.caption("VisionOCR · Qwen2.5-VL-3B + LoRA + AWQ + vLLM · Built for AI/ML Engineer portfolio")
+st.caption(
+    "VisionOCR · Qwen2.5-VL-3B + LoRA + AWQ + vLLM · Built for AI/ML Engineer portfolio"
+)

@@ -4,6 +4,7 @@ Revision ID: 0001_initial_schema
 Revises:
 Create Date: 2026-07-17
 """
+
 from alembic import op
 import sqlalchemy as sa
 
@@ -29,7 +30,9 @@ def upgrade() -> None:
     op.create_table(
         "invoice_items",
         sa.Column("id", sa.Uuid(), primary_key=True, nullable=False),
-        sa.Column("invoice_id", sa.Uuid(), sa.ForeignKey("invoices.id"), nullable=False),
+        sa.Column(
+            "invoice_id", sa.Uuid(), sa.ForeignKey("invoices.id"), nullable=False
+        ),
         sa.Column("name", sa.String(), nullable=False),
         sa.Column("unit_price", sa.Float(), nullable=True),
         sa.Column("quantity", sa.Float(), nullable=True),

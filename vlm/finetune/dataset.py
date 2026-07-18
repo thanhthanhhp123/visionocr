@@ -17,7 +17,7 @@ PROMPT_TEMPLATE = (
 class InvoiceDataset(Dataset):
     def __init__(self, jsonl_path: str, processor):
         self.jsonl_path = Path(jsonl_path)
-        self.image_dir  = self.jsonl_path.parent / "images"
+        self.image_dir = self.jsonl_path.parent / "images"
         with open(jsonl_path, encoding="utf-8") as data_file:
             self.data = [json.loads(line) for line in data_file]
         self.processor = processor
@@ -41,7 +41,7 @@ class InvoiceDataset(Dataset):
         )
 
         input_ids = inputs["input_ids"][0]
-        labels    = input_ids.clone()
+        labels = input_ids.clone()
 
         # Mask prompt tokens — only compute loss on assistant response
         assistant_tokens = self.processor.tokenizer.encode(
@@ -55,11 +55,11 @@ class InvoiceDataset(Dataset):
         labels[labels == self.processor.tokenizer.pad_token_id] = -100
 
         return {
-            "input_ids":      input_ids,
+            "input_ids": input_ids,
             "attention_mask": inputs["attention_mask"][0],
-            "pixel_values":   inputs["pixel_values"],
+            "pixel_values": inputs["pixel_values"],
             "image_grid_thw": inputs["image_grid_thw"].squeeze(0),  # fix: (1,3) → (3,)
-            "labels":         labels,
+            "labels": labels,
         }
 
     def _messages_from_sample(self, sample):
@@ -67,7 +67,9 @@ class InvoiceDataset(Dataset):
             return sample["messages"]
 
         if "image" not in sample or "label" not in sample:
-            raise KeyError("Expected sample to contain either 'messages' or both 'image' and 'label'")
+            raise KeyError(
+                "Expected sample to contain either 'messages' or both 'image' and 'label'"
+            )
 
         ocr_hint = ""
         if sample.get("ocr_text"):
@@ -80,7 +82,10 @@ class InvoiceDataset(Dataset):
             {
                 "role": "user",
                 "content": [
-                    {"type": "image", "image": self._resolve_image_path(sample["image"])},
+                    {
+                        "type": "image",
+                        "image": self._resolve_image_path(sample["image"]),
+                    },
                     {"type": "text", "text": prompt},
                 ],
             },

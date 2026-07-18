@@ -31,7 +31,9 @@ def _record_response(record) -> InvoiceRecordResponse:
 async def extract_invoice(file: UploadFile = File(...)):
     """Queue a validated Vietnamese invoice image for asynchronous extraction."""
     if file.content_type not in SUPPORTED_TYPES:
-        raise HTTPException(status_code=400, detail="Only JPEG/PNG images are supported")
+        raise HTTPException(
+            status_code=400, detail="Only JPEG/PNG images are supported"
+        )
 
     image_bytes = await file.read()
     if not image_bytes:
@@ -66,7 +68,10 @@ async def get_task_result(task_id: str):
 
 @router.get("/invoices", response_model=list[InvoiceRecordResponse])
 async def get_invoices(limit: int = 20, db: Session = Depends(get_db)):
-    return [_record_response(record) for record in list_invoices(db, min(max(limit, 1), 100))]
+    return [
+        _record_response(record)
+        for record in list_invoices(db, min(max(limit, 1), 100))
+    ]
 
 
 @router.get("/invoices/{invoice_id}", response_model=InvoiceRecordResponse)
@@ -82,5 +87,7 @@ async def health_check(db: Session = Depends(get_db)):
     try:
         db.execute(text("SELECT 1"))
     except Exception as exc:
-        raise HTTPException(status_code=503, detail=f"Database unavailable: {exc}") from exc
+        raise HTTPException(
+            status_code=503, detail=f"Database unavailable: {exc}"
+        ) from exc
     return {"status": "ok", "service": "visionocr-api", "database": "ok"}

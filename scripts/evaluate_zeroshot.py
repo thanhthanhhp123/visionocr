@@ -4,6 +4,7 @@ Evaluate the base Qwen2.5-VL model without the LoRA adapter.
 Usage:
     python scripts/evaluate_zeroshot.py
 """
+
 from __future__ import annotations
 
 import json
@@ -18,7 +19,11 @@ RESULTS_PATH = PROJECT_ROOT / "results_zeroshot_v2.json"
 
 
 def load_base_model():
-    from transformers import AutoProcessor, BitsAndBytesConfig, Qwen2_5_VLForConditionalGeneration
+    from transformers import (
+        AutoProcessor,
+        BitsAndBytesConfig,
+        Qwen2_5_VLForConditionalGeneration,
+    )
 
     use_cuda = torch.cuda.is_available()
     use_bf16 = use_cuda and torch.cuda.is_bf16_supported()
@@ -52,7 +57,9 @@ def main():
 
     model, processor = load_base_model()
     output = run_eval(model, processor, label="zero_shot_v2")
-    RESULTS_PATH.write_text(json.dumps(output, ensure_ascii=False, indent=2), encoding="utf-8")
+    RESULTS_PATH.write_text(
+        json.dumps(output, ensure_ascii=False, indent=2), encoding="utf-8"
+    )
     print_scores(output["scores"])
     print(f"\nSaved to {RESULTS_PATH}")
 

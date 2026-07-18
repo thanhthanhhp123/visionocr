@@ -12,6 +12,7 @@ Usage:
 Requirements:
     pip install autoawq autoawq-kernels
 """
+
 import argparse
 import os
 import torch
@@ -24,11 +25,20 @@ _base_candidates = [
 ]
 BASE_MODEL_ID = os.getenv(
     "BASE_MODEL_ID",
-    next((str(path) for path in _base_candidates if path.exists()), "Qwen/Qwen2.5-VL-3B-Instruct"),
+    next(
+        (str(path) for path in _base_candidates if path.exists()),
+        "Qwen/Qwen2.5-VL-3B-Instruct",
+    ),
 )
-ADAPTER_PATH = Path(os.getenv("LORA_ADAPTER_PATH", PROJECT_ROOT / "models/qwen-lora-invoice-adapter-v2"))
-MERGED_PATH = Path(os.getenv("MERGED_MODEL_PATH", PROJECT_ROOT / "models/qwen-merged-invoice-v2"))
-AWQ_OUT_PATH = Path(os.getenv("AWQ_MODEL_PATH", PROJECT_ROOT / "models/qwen-awq-invoice-v2"))
+ADAPTER_PATH = Path(
+    os.getenv("LORA_ADAPTER_PATH", PROJECT_ROOT / "models/qwen-lora-invoice-adapter-v2")
+)
+MERGED_PATH = Path(
+    os.getenv("MERGED_MODEL_PATH", PROJECT_ROOT / "models/qwen-merged-invoice-v2")
+)
+AWQ_OUT_PATH = Path(
+    os.getenv("AWQ_MODEL_PATH", PROJECT_ROOT / "models/qwen-awq-invoice-v2")
+)
 CALIB_JSONL = PROJECT_ROOT / "datasets/train.jsonl"
 
 
@@ -41,7 +51,7 @@ def merge_lora():
     base = Qwen2_5_VLForConditionalGeneration.from_pretrained(
         BASE_MODEL_ID,
         torch_dtype=torch.bfloat16,
-        device_map="cpu",   # merge on CPU to avoid VRAM spike
+        device_map="cpu",  # merge on CPU to avoid VRAM spike
     )
     model = PeftModel.from_pretrained(base, str(ADAPTER_PATH))
     merged = model.merge_and_unload()
@@ -92,9 +102,13 @@ def quantize_awq():
         return model.model.language_model.layers
 
     def _move_embed(model, device):
-        model.model.language_model.embed_tokens = model.model.language_model.embed_tokens.to(device)
+        model.model.language_model.embed_tokens = (
+            model.model.language_model.embed_tokens.to(device)
+        )
         model.visual = model.visual.to(device)
-        model.model.language_model.rotary_emb = model.model.language_model.rotary_emb.to(device)
+        model.model.language_model.rotary_emb = (
+            model.model.language_model.rotary_emb.to(device)
+        )
 
     Qwen2_5_VLAWQForCausalLM.get_model_layers = staticmethod(_get_model_layers)
     Qwen2_5_VLAWQForCausalLM.move_embed = staticmethod(_move_embed)
@@ -166,7 +180,9 @@ def quantize_awq():
         clear_memory()
 
         if layer_kwargs.get("attention_mask") is not None:
-            layer_kwargs["attention_mask"] = layer_kwargs["attention_mask"].to(best_device)
+            layer_kwargs["attention_mask"] = layer_kwargs["attention_mask"].to(
+                best_device
+            )
         elif "qwen" in self.awq_model.model_type:
             layer_kwargs["attention_mask"] = None
 
@@ -196,7 +212,9 @@ def quantize_awq():
                 break
             sample = json.loads(line)
             user_text = next(
-                c["text"] for c in sample["messages"][0]["content"] if c["type"] == "text"
+                c["text"]
+                for c in sample["messages"][0]["content"]
+                if c["type"] == "text"
             )
             assistant_text = sample["messages"][1]["content"][0]["text"]
             calib_texts.append(f"{user_text}\n{assistant_text}")
@@ -208,7 +226,9 @@ def quantize_awq():
         "version": "GEMM",
     }
 
-    model.quantize(processor.tokenizer, quant_config=quant_config, calib_data=calib_texts)
+    model.quantize(
+        processor.tokenizer, quant_config=quant_config, calib_data=calib_texts
+    )
     model.save_quantized(AWQ_OUT_PATH)
     processor.save_pretrained(AWQ_OUT_PATH)
     print(f"AWQ model saved to {AWQ_OUT_PATH}")
@@ -216,8 +236,14 @@ def quantize_awq():
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
-    parser.add_argument("--merge-only", action="store_true", help="Merge LoRA without AWQ quantization.")
-    parser.add_argument("--quantize-only", action="store_true", help="Quantize an existing merged model.")
+    parser.add_argument(
+        "--merge-only", action="store_true", help="Merge LoRA without AWQ quantization."
+    )
+    parser.add_argument(
+        "--quantize-only",
+        action="store_true",
+        help="Quantize an existing merged model.",
+    )
     args = parser.parse_args()
     if args.merge_only and args.quantize_only:
         parser.error("Choose only one of --merge-only or --quantize-only")

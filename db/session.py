@@ -1,4 +1,5 @@
 """Database configuration shared by the API and Celery worker."""
+
 from __future__ import annotations
 
 import os

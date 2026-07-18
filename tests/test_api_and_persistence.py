@@ -28,26 +28,41 @@ def _image_bytes() -> bytes:
 def _request(method: str, url: str, **kwargs) -> httpx.Response:
     async def send_request() -> httpx.Response:
         transport = httpx.ASGITransport(app=app)
-        async with httpx.AsyncClient(transport=transport, base_url="http://testserver") as client:
+        async with httpx.AsyncClient(
+            transport=transport, base_url="http://testserver"
+        ) as client:
             return await client.request(method, url, **kwargs)
 
     return asyncio.run(send_request())
 
 
 def test_extract_rejects_non_image():
-    response = _request("POST", "/api/v1/extract", files={"file": ("note.txt", b"x", "text/plain")})
+    response = _request(
+        "POST", "/api/v1/extract", files={"file": ("note.txt", b"x", "text/plain")}
+    )
     assert response.status_code == 400
 
 
 def test_extract_queues_base64_image(monkeypatch):
-    monkeypatch.setattr(invoice_routes.extract_invoice_task, "delay", lambda *_: SimpleNamespace(id="task-123"))
+    monkeypatch.setattr(
+        invoice_routes.extract_invoice_task,
+        "delay",
+        lambda *_: SimpleNamespace(id="task-123"),
+    )
     response = _request(
         "POST",
         "/api/v1/extract",
         files={"file": ("invoice.png", _image_bytes(), "image/png")},
     )
     assert response.status_code == 202
-    assert response.json() == {"task_id": "task-123", "status": "processing", "result": None, "error": None, "latency_ms": None, "invoice_id": None}
+    assert response.json() == {
+        "task_id": "task-123",
+        "status": "processing",
+        "result": None,
+        "error": None,
+        "latency_ms": None,
+        "invoice_id": None,
+    }
 
 
 def test_task_poll_returns_worker_payload(monkeypatch):
@@ -57,12 +72,18 @@ def test_task_poll_returns_worker_payload(monkeypatch):
             "date": "2026-01-01",
             "total": 100,
             "discount": 0,
-            "items": [{"name": "Item", "unit_price": 100, "quantity": 1, "total_price": 100}],
+            "items": [
+                {"name": "Item", "unit_price": 100, "quantity": 1, "total_price": 100}
+            ],
         },
         "latency_ms": 12.5,
         "invoice_id": "0e4e4b7b-3faa-4df6-9ed3-2ae3261aa549",
     }
-    monkeypatch.setattr(invoice_routes.celery_app, "AsyncResult", lambda _: SimpleNamespace(state="SUCCESS", result=payload))
+    monkeypatch.setattr(
+        invoice_routes.celery_app,
+        "AsyncResult",
+        lambda _: SimpleNamespace(state="SUCCESS", result=payload),
+    )
     response = _request("GET", "/api/v1/tasks/task-123")
     assert response.status_code == 200
     assert response.json()["result"]["total"] == 100.0

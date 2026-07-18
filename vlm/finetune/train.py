@@ -10,6 +10,7 @@ Requirements:
     pip install -r requirements-train.txt
     GPU with 16GB+ VRAM recommended (RTX 3090 / 4090 / A100)
 """
+
 import sys
 from pathlib import Path
 
@@ -31,19 +32,19 @@ if str(PROJECT_ROOT) not in sys.path:
 from vlm.finetune.dataset import InvoiceDataset  # noqa: E402
 
 # ── Hyperparameters ─────────────────────────────────────────────────────────
-MODEL_ID       = "/home/s3002152/LeeHoang_/vlm_invoice/models/Qwen2.5-VL-3B-Instruct"
-TRAIN_JSONL    = str(PROJECT_ROOT / "datasets/train.jsonl")
-VAL_JSONL      = str(PROJECT_ROOT / "datasets/val.jsonl")
-OUTPUT_DIR     = str(PROJECT_ROOT / "checkpoints/qwen-lora-invoice-v2")
-ADAPTER_OUT    = str(PROJECT_ROOT / "models/qwen-lora-invoice-adapter-v2")
+MODEL_ID = "/home/s3002152/LeeHoang_/vlm_invoice/models/Qwen2.5-VL-3B-Instruct"
+TRAIN_JSONL = str(PROJECT_ROOT / "datasets/train.jsonl")
+VAL_JSONL = str(PROJECT_ROOT / "datasets/val.jsonl")
+OUTPUT_DIR = str(PROJECT_ROOT / "checkpoints/qwen-lora-invoice-v2")
+ADAPTER_OUT = str(PROJECT_ROOT / "models/qwen-lora-invoice-adapter-v2")
 
-LORA_R         = 16
-LORA_ALPHA     = 32
-LORA_DROPOUT   = 0.05
-LR             = 5e-5
-EPOCHS         = 5
-GRAD_ACCUM     = 8       # effective batch = 8
-MAX_PIXELS     = 768 * 28 * 28   # reduce if OOM
+LORA_R = 16
+LORA_ALPHA = 32
+LORA_DROPOUT = 0.05
+LR = 5e-5
+EPOCHS = 5
+GRAD_ACCUM = 8  # effective batch = 8
+MAX_PIXELS = 768 * 28 * 28  # reduce if OOM
 # ────────────────────────────────────────────────────────────────────────────
 
 
@@ -82,8 +83,13 @@ def main():
         lora_dropout=LORA_DROPOUT,
         bias="none",
         target_modules=[
-            "q_proj", "k_proj", "v_proj", "o_proj",
-            "gate_proj", "up_proj", "down_proj",
+            "q_proj",
+            "k_proj",
+            "v_proj",
+            "o_proj",
+            "gate_proj",
+            "up_proj",
+            "down_proj",
         ],
     )
     model = get_peft_model(model, lora_config)
@@ -91,7 +97,7 @@ def main():
 
     # Datasets
     train_ds = InvoiceDataset(TRAIN_JSONL, processor)
-    val_ds   = InvoiceDataset(VAL_JSONL,   processor)
+    val_ds = InvoiceDataset(VAL_JSONL, processor)
     print(f"Train: {len(train_ds)} | Val: {len(val_ds)}")
 
     # Training arguments
@@ -131,16 +137,18 @@ def main():
             )
 
     with mlflow.start_run(run_name=f"qwen2.5-vl-3b-lora-r{LORA_R}"):
-        mlflow.log_params({
-            "model":        MODEL_ID,
-            "lora_r":       LORA_R,
-            "lora_alpha":   LORA_ALPHA,
-            "lr":           LR,
-            "epochs":       EPOCHS,
-            "grad_accum":   GRAD_ACCUM,
-            "train_samples": len(train_ds),
-            "val_samples":   len(val_ds),
-        })
+        mlflow.log_params(
+            {
+                "model": MODEL_ID,
+                "lora_r": LORA_R,
+                "lora_alpha": LORA_ALPHA,
+                "lr": LR,
+                "epochs": EPOCHS,
+                "grad_accum": GRAD_ACCUM,
+                "train_samples": len(train_ds),
+                "val_samples": len(val_ds),
+            }
+        )
 
         trainer = MLflowTrainer(
             model=model,
@@ -162,7 +170,9 @@ def main():
 
 def single_sample_collator(features):
     if len(features) != 1:
-        raise ValueError("This training script expects per-device batch size 1 for variable-size images")
+        raise ValueError(
+            "This training script expects per-device batch size 1 for variable-size images"
+        )
 
     feature = features[0]
     return {

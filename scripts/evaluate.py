@@ -5,6 +5,7 @@ Usage:
     python scripts/evaluate.py
     python scripts/evaluate.py --update-readme
 """
+
 from __future__ import annotations
 
 import argparse
@@ -29,7 +30,9 @@ ADAPTER_PATH = PROJECT_ROOT / "models/qwen-lora-invoice-adapter-v2"
 LOCAL_BASE_MODEL = PROJECT_ROOT.parent / "models/Qwen2.5-VL-3B-Instruct"
 BASE_MODEL = os.getenv(
     "BASE_MODEL_ID",
-    str(LOCAL_BASE_MODEL if LOCAL_BASE_MODEL.exists() else "Qwen/Qwen2.5-VL-3B-Instruct"),
+    str(
+        LOCAL_BASE_MODEL if LOCAL_BASE_MODEL.exists() else "Qwen/Qwen2.5-VL-3B-Instruct"
+    ),
 )
 RESULTS_PATH = PROJECT_ROOT / "results_finetuned_v2.json"
 README_PATH = PROJECT_ROOT / "README.md"
@@ -45,7 +48,11 @@ PROMPT_TEMPLATE = (
 
 def load_model():
     from peft import PeftModel
-    from transformers import AutoProcessor, BitsAndBytesConfig, Qwen2_5_VLForConditionalGeneration
+    from transformers import (
+        AutoProcessor,
+        BitsAndBytesConfig,
+        Qwen2_5_VLForConditionalGeneration,
+    )
 
     use_cuda = torch.cuda.is_available()
     use_bf16 = use_cuda and torch.cuda.is_bf16_supported()
@@ -77,10 +84,14 @@ def load_model():
 
 def messages_and_gold(sample: dict) -> tuple[list[dict], dict]:
     if "messages" in sample:
-        return [sample["messages"][0]], json.loads(sample["messages"][1]["content"][0]["text"])
+        return [sample["messages"][0]], json.loads(
+            sample["messages"][1]["content"][0]["text"]
+        )
 
     if "image" not in sample or "label" not in sample:
-        raise KeyError("Expected sample to contain either 'messages' or both 'image' and 'label'")
+        raise KeyError(
+            "Expected sample to contain either 'messages' or both 'image' and 'label'"
+        )
 
     ocr_hint = ""
     if sample.get("ocr_text"):
@@ -113,7 +124,9 @@ def resolve_image_path(image_path: str) -> str:
 def predict(messages: list[dict], model, processor) -> tuple[dict, float, str]:
     from qwen_vl_utils import process_vision_info
 
-    text = processor.apply_chat_template(messages, tokenize=False, add_generation_prompt=True)
+    text = processor.apply_chat_template(
+        messages, tokenize=False, add_generation_prompt=True
+    )
     images, _ = process_vision_info(messages)
     inputs = processor(text=[text], images=images, return_tensors="pt").to(model.device)
 
@@ -122,7 +135,9 @@ def predict(messages: list[dict], model, processor) -> tuple[dict, float, str]:
         out = model.generate(**inputs, max_new_tokens=768, do_sample=False)
     latency = time.perf_counter() - start
 
-    response = processor.decode(out[0][inputs["input_ids"].shape[1] :], skip_special_tokens=True)
+    response = processor.decode(
+        out[0][inputs["input_ids"].shape[1] :], skip_special_tokens=True
+    )
     return parse_json(response), latency, response
 
 
@@ -177,7 +192,12 @@ def item_f1(pred_items: list, gold_items: list) -> float:
         for index, gold_item in enumerate(gold_items):
             if index in used:
                 continue
-            if fuzz.token_sort_ratio(pred_item.get("name", ""), gold_item.get("name", "")) >= 70:
+            if (
+                fuzz.token_sort_ratio(
+                    pred_item.get("name", ""), gold_item.get("name", "")
+                )
+                >= 70
+            ):
                 matched += 1
                 used.add(index)
                 break
@@ -189,7 +209,14 @@ def item_f1(pred_items: list, gold_items: list) -> float:
 
 def run_eval(model, processor, label: str = "fine_tuned_v2") -> dict:
     samples = [json.loads(line) for line in open(TEST_JSONL, encoding="utf-8")]
-    results = {"store": [], "date": [], "total": [], "item_f1": [], "parse_ok": [], "latency": []}
+    results = {
+        "store": [],
+        "date": [],
+        "total": [],
+        "item_f1": [],
+        "parse_ok": [],
+        "latency": [],
+    }
     predictions = []
 
     print(f"Evaluating {len(samples)} samples [{label}]...")
@@ -200,11 +227,34 @@ def run_eval(model, processor, label: str = "fine_tuned_v2") -> dict:
 
         results["parse_ok"].append(int(parse_ok))
         results["latency"].append(latency)
-        results["store"].append(int(parse_ok and normalize_text(pred.get("store_name")) == normalize_text(gold.get("store_name"))))
-        results["date"].append(int(parse_ok and normalize_date(pred.get("date")) == normalize_date(gold.get("date"))))
-        results["total"].append(int(parse_ok and numeric_match(pred.get("total"), gold.get("total"))))
-        results["item_f1"].append(item_f1(pred.get("items", []), gold.get("items", [])) if parse_ok else 0.0)
-        predictions.append({"index": index - 1, "gold": gold, "pred": pred, "raw_response": raw_response, "latency_sec": latency})
+        results["store"].append(
+            int(
+                parse_ok
+                and normalize_text(pred.get("store_name"))
+                == normalize_text(gold.get("store_name"))
+            )
+        )
+        results["date"].append(
+            int(
+                parse_ok
+                and normalize_date(pred.get("date")) == normalize_date(gold.get("date"))
+            )
+        )
+        results["total"].append(
+            int(parse_ok and numeric_match(pred.get("total"), gold.get("total")))
+        )
+        results["item_f1"].append(
+            item_f1(pred.get("items", []), gold.get("items", [])) if parse_ok else 0.0
+        )
+        predictions.append(
+            {
+                "index": index - 1,
+                "gold": gold,
+                "pred": pred,
+                "raw_response": raw_response,
+                "latency_sec": latency,
+            }
+        )
 
         if index % 5 == 0 or index == len(samples):
             print(f"  {index}/{len(samples)} done...")
@@ -231,23 +281,25 @@ def print_scores(scores: dict):
     print(f"Total Amount Accuracy: {scores['total_amount_accuracy']:.1%}")
     print(f"Item Name F1         : {scores['item_name_f1']:.3f}")
     print(f"JSON Parse Rate      : {scores['json_parse_rate']:.1%}")
-    print(f"Avg Latency          : {scores['avg_latency_sec']:.2f}s ({scores['latency_label']})")
+    print(
+        f"Avg Latency          : {scores['avg_latency_sec']:.2f}s ({scores['latency_label']})"
+    )
 
 
 def update_readme(scores: dict):
     readme = README_PATH.read_text(encoding="utf-8")
     replacement = f"""## Evaluation Results
 
-Results on {scores['samples']}-sample held-out test set (Vietnamese retail invoices):
+Results on {scores["samples"]}-sample held-out test set (Vietnamese retail invoices):
 
 | Metric | Score |
 |---|---|
-| Store Name Accuracy | {scores['store_name_accuracy']:.1%} |
-| Date Accuracy | {scores['date_accuracy']:.1%} |
-| Total Amount Accuracy | {scores['total_amount_accuracy']:.1%} |
-| Item Name F1 | {scores['item_name_f1']:.3f} |
-| JSON Parse Rate | {scores['json_parse_rate']:.1%} |
-| Avg Latency (HF + LoRA) | {scores['avg_latency_sec']:.2f}s |
+| Store Name Accuracy | {scores["store_name_accuracy"]:.1%} |
+| Date Accuracy | {scores["date_accuracy"]:.1%} |
+| Total Amount Accuracy | {scores["total_amount_accuracy"]:.1%} |
+| Item Name F1 | {scores["item_name_f1"]:.3f} |
+| JSON Parse Rate | {scores["json_parse_rate"]:.1%} |
+| Avg Latency (HF + LoRA) | {scores["avg_latency_sec"]:.2f}s |
 | Avg Latency (AWQ + vLLM) | — |
 
 *AWQ + vLLM latency will be updated after merge and quantization.*
@@ -263,12 +315,18 @@ Results on {scores['samples']}-sample held-out test set (Vietnamese retail invoi
 
 def main():
     parser = argparse.ArgumentParser()
-    parser.add_argument("--update-readme", action="store_true", help="Update README.md with fine-tuned metrics.")
+    parser.add_argument(
+        "--update-readme",
+        action="store_true",
+        help="Update README.md with fine-tuned metrics.",
+    )
     args = parser.parse_args()
 
     model, processor = load_model()
     output = run_eval(model, processor)
-    RESULTS_PATH.write_text(json.dumps(output, ensure_ascii=False, indent=2), encoding="utf-8")
+    RESULTS_PATH.write_text(
+        json.dumps(output, ensure_ascii=False, indent=2), encoding="utf-8"
+    )
     print_scores(output["scores"])
     print(f"\nSaved to {RESULTS_PATH}")
 
