@@ -82,6 +82,81 @@ def quantize_awq():
     Qwen2_5_VLAWQForCausalLM.get_model_layers = staticmethod(_get_model_layers)
     Qwen2_5_VLAWQForCausalLM.move_embed = staticmethod(_move_embed)
 
+    # AutoAWQ's calibration harness (AwqQuantizer.init_quant) wraps decoder
+    # layer 0 in a `Catcher` proxy to capture its input activations. The
+    # installed transformers reads `decoder_layer.attention_type` off every
+    # layer -- including the wrapped one -- to pick a causal mask before
+    # invoking it, but `Catcher` never copied that attribute from the module
+    # it wraps. This is a faithful copy of AwqQuantizer.init_quant (awq
+    # 0.2.x) with a single added line restoring `attention_type` on the
+    # Catcher instance; everything else is unchanged from the library.
+    from awq.quantize.quantizer import AwqQuantizer
+    from awq.utils.calib_data import get_calib_dataset
+    from awq.utils.utils import clear_memory, get_best_device
+    import torch.nn as nn
+
+    def _init_quant(self, n_samples=128, max_seq_len=512):
+        modules = self.awq_model.get_model_layers(self.model)
+        samples = get_calib_dataset(
+            data=self.calib_data,
+            tokenizer=self.tokenizer,
+            n_samples=n_samples,
+            max_seq_len=max_seq_len,
+            split=self.split,
+            text_column=self.text_column,
+        )
+        samples = torch.cat(samples, dim=0)
+
+        inps = []
+        layer_kwargs = {}
+
+        best_device = get_best_device()
+        modules[0] = modules[0].to(best_device)
+        self.awq_model.move_embed(self.model, best_device)
+
+        class Catcher(nn.Module):
+            def __init__(self, module):
+                super().__init__()
+                self.module = module
+                self.attention_type = getattr(module, "attention_type", None)
+
+            def forward(self, *args, **kwargs):
+                if len(args) > 0:
+                    hidden_states = args[0]
+                    del args
+                else:
+                    first_key = list(kwargs.keys())[0]
+                    hidden_states = kwargs.pop(first_key)
+                inps.append(hidden_states)
+                layer_kwargs.update(kwargs)
+                raise ValueError  # early exit to break later inference
+
+        modules[0] = Catcher(modules[0])
+        try:
+            self.model(samples.to(next(self.model.parameters()).device))
+        except ValueError:
+            pass
+        modules[0] = modules[0].module
+
+        layer_kwargs = self.model.prepare_inputs_for_generation(samples, **layer_kwargs)
+        layer_kwargs.pop("input_ids")
+
+        del samples
+        inps = inps[0]
+
+        modules[0] = modules[0].cpu()
+        self.awq_model.move_embed(self.model, "cpu")
+        clear_memory()
+
+        if layer_kwargs.get("attention_mask") is not None:
+            layer_kwargs["attention_mask"] = layer_kwargs["attention_mask"].to(best_device)
+        elif "qwen" in self.awq_model.model_type:
+            layer_kwargs["attention_mask"] = None
+
+        return modules, layer_kwargs, inps
+
+    AwqQuantizer.init_quant = _init_quant
+
     model = AutoAWQForCausalLM.from_pretrained(
         MERGED_PATH, low_cpu_mem_usage=True, use_cache=False
     )
