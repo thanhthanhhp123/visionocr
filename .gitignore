@@ -42,6 +42,7 @@ logs/
 # Secrets & config
 .env
 .env.*
+!.env.example
 config/local.py
 secrets/
 

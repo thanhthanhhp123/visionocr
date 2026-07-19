@@ -6,10 +6,8 @@ services:
     image: postgres:16-alpine
     environment:
       POSTGRES_USER: visionocr
-      POSTGRES_PASSWORD: password
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?Set POSTGRES_PASSWORD in .env — run scripts/setup_vastai.sh or copy .env.example}
       POSTGRES_DB: visionocr_db
-    ports:
-      - "5432:5432"
     volumes:
       - postgres_data:/var/lib/postgresql/data
     healthcheck:
@@ -21,8 +19,6 @@ services:
   # ── Redis ───────────────────────────────────────────────────────
   redis:
     image: redis:7-alpine
-    ports:
-      - "6379:6379"
     healthcheck:
       test: ["CMD", "redis-cli", "ping"]
       interval: 5s
@@ -32,13 +28,11 @@ services:
     build:
       context: .
       dockerfile: docker/Dockerfile.api
-    ports:
-      - "8000:8000"
     env_file:
       - path: .env
         required: false
     environment:
-      DATABASE_URL: postgresql://visionocr:password@postgres:5432/visionocr_db
+      DATABASE_URL: postgresql://visionocr:${POSTGRES_PASSWORD}@postgres:5432/visionocr_db
       REDIS_URL: redis://redis:6379/0
       CELERY_BROKER_URL: redis://redis:6379/0
       CELERY_RESULT_BACKEND: redis://redis:6379/1
@@ -60,7 +54,7 @@ services:
       - path: .env
         required: false
     environment:
-      DATABASE_URL: postgresql://visionocr:password@postgres:5432/visionocr_db
+      DATABASE_URL: postgresql://visionocr:${POSTGRES_PASSWORD}@postgres:5432/visionocr_db
       CELERY_BROKER_URL: redis://redis:6379/0
       CELERY_RESULT_BACKEND: redis://redis:6379/1
       REDIS_URL: redis://redis:6379/0
@@ -100,13 +94,29 @@ services:
     build:
       context: .
       dockerfile: docker/Dockerfile.frontend
-    ports:
-      - "8501:8501"
     environment:
       API_BASE: http://api:8000/api/v1
     depends_on:
       - api
 
+  # ── Caddy (public entrypoint: reverse proxy + automatic HTTPS) ───
+  caddy:
+    image: caddy:2-alpine
+    ports:
+      - "80:80"
+      - "443:443"
+    environment:
+      SITE_ADDRESS: ${SITE_ADDRESS:-:80}
+    volumes:
+      - ./docker/Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy_data:/data
+      - caddy_config:/config
+    depends_on:
+      - api
+      - frontend
+
 volumes:
   postgres_data:
   mlflow_data:
+  caddy_data:
+  caddy_config:
