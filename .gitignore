@@ -21,6 +21,7 @@ ENV/
 datasets/images/
 datasets/labels/
 datasets/sources/
+datasets/demo_images/
 datasets/*.jsonl
 models/
 checkpoints/
